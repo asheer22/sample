@@ -1,0 +1,2931 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: 'RDS Template'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Environment Details
+      Parameters:
+        - EnvironmentName
+        - ApplicationName
+        - CustomerName
+        - ExportTag
+    - Label:
+        default: Data-At-Rest Encryption  
+      Parameters:  
+        - KMSArn         
+    - Label:
+        default: Database Details
+      Parameters:
+        - DatabaseType
+        - DBInstancetype
+        - DBMultiAZ
+        - Readreplica
+        - DBUsername
+        - DBPassword
+        - MinAuroraCapacityUnit
+        - MaxAuroraCapacityUnit        
+        - DatabaseName
+        - StorageType
+        - DBAllocatedStorage
+        - ProvisionedIOPS
+        - EnablePerformanceInsights
+        - EnhancedMonitoringInterval        
+        - Customport
+    - Label:
+        default: Tag 1
+      Parameters:
+        - Key1
+        - Value1
+    - Label:
+        default: Tag 2
+      Parameters:          
+        - Key2
+        - Value2
+    - Label:
+        default: Tag 3
+      Parameters:          
+        - Key3
+        - Value3
+    - Label:
+        default: Tag 4
+      Parameters:            
+        - Key4          
+        - Value4
+    - Label:
+        default: Tag 5
+      Parameters:            
+        - Key5
+        - Value5  
+
+    ParameterLabels:
+      EnvironmentName:
+        default: Environment Name
+      ApplicationName:
+        default: Application Name
+      CustomerName:
+        default: Customer Name
+      ExportTag:
+        default: Export Tag
+      DatabaseType:
+        default: Database Type
+      DBInstancetype:
+        default: Database Instance Type
+      DBMultiAZ:
+        default: Deploy database in Multi AZ
+      Readreplica:
+        default: Enable Readreplica
+      DBUsername:
+        default: Database Username
+      DBPassword:
+        default: Database Password
+      MinAuroraCapacityUnit:
+        default: Minimum Aurora Capacity Units
+      MaxAuroraCapacityUnit:
+        default: Maximum Aurora Capacity Units        
+      DatabaseName:
+        default: Database Name
+      StorageType:
+        default: Database Storage Type
+      DBAllocatedStorage:
+        default: Database Allocated Storage
+      ProvisionedIOPS:
+        default: Provisioned IOPS
+      EnablePerformanceInsights:
+        default: Enable DB Performance Insights
+      EnhancedMonitoringInterval:
+        default: Enhanced Monitoring Interval        
+      Customport:
+        default: Custom port
+      KMSArn:
+        default: KMS ARN                
+ 
+Parameters:
+  EnvironmentName:
+    Description: Type of Env
+    Type: String
+    AllowedValues:
+      - development
+      - production
+      - staging
+  DatabaseType:
+    Description: select the database type you need
+    Type: String
+    AllowedValues:
+      - AuroraMYSQL
+      - AuroraPSQL
+      - AuroraServerlessMYSQL
+      - AuroraServerlessPSQL
+      - MySQL
+      - MariaDB
+      - OracleDB
+      - SQLServer
+      - PostgreSQL
+  ExportTag:
+    Description: Tags for the Exports 
+    Type: String
+  Readreplica:
+    Description: Select if you want read replica but for OrcaleDB and SQLServer natively read replicas will be not available 
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false 
+  DBInstancetype:
+    Type: String
+    Description: Select an Instance size according to your use. t3.small and t3.medium won't be supported for SQLServer. Not applicable for Serverless RDS
+    AllowedValues:
+    - db.t3.small
+    - db.t3.medium
+    - db.r5.large
+    - db.r5.xlarge
+    Default: db.t3.medium
+  ApplicationName:
+    Description: Name of your app
+    Type: String  
+  DBUsername:
+    Description: Enter Datbase username name
+    Type: String
+    MinLength: '5'
+    MaxLength: '15'
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    Description: App Db Password
+    NoEcho: 'true'
+    Type: String
+    MinLength: '7'
+    MaxLength: '25'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: Db Password must be 7-25 characters and contain only alpha numeric characters.  
+  MinAuroraCapacityUnit:
+    Description: The minimum capacity for an Aurora DB cluster in serverless DB engine mode. For Aurora MySQL, valid capacity values are 1, 2, 4, 8, 16, 32, 64, 128, and 256. For Aurora PostgreSQL, valid capacity values are 2, 4, 8, 16, 32, 64, 192, and 384. The minimum capacity must be less than or equal to the Maximum Aurora Capacity Unit. Only applicable for Serverless RDS
+    Type: String
+    Default: 2
+    AllowedValues:
+        - 1
+        - 2
+        - 4
+        - 8
+        - 16
+        - 32
+        - 64
+        - 192
+        - 128
+        - 256
+        - 384
+  MaxAuroraCapacityUnit:
+    Description: The maximum capacity for an Aurora DB cluster in serverless DB engine mode. For Aurora MySQL, valid capacity values are 1, 2, 4, 8, 16, 32, 64, 128, and 256. For Aurora PostgreSQL, valid capacity values are 2, 4, 8, 16, 32, 64, 192, and 384. The maximum capacity must be greater than or equal to the Minimum Aurora Capacity Unit. Only applicable for Serverless RDS
+    Type: String
+    Default: 2
+    AllowedValues:
+      - 1
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+      - 192
+      - 128
+      - 256
+      - 384
+  DatabaseName:
+    Type: String
+    Description: Database name
+    MinLength: 1
+    MaxLength: 30
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: Name must begin with a letter and contain only alphanumeric characters               
+  CustomerName :
+    Type: String
+    Description: Name of the customer(arbitary)
+  StorageType:
+    Description: The volume details 
+    Type: String 
+    AllowedValues:
+      - gp2
+      - io1
+  EnablePerformanceInsights:
+    Description:  Indicate whether to enable Performance Insights for the DB instance. There are some limitations in Performance insights. please refer this link for more details  "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PerfInsights.Overview.Engines.html"
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EnhancedMonitoringInterval:
+    Description: Select interval other than 0 to enable Enhanced Monitoring for the RDS. The interval is in seconds, between points when Enhanced Monitoring metrics are collected for the DB instance. To disable collection of Enhanced Monitoring metrics, select 0. The default is 0.
+    Type: Number
+    Default: 0
+    AllowedValues:
+      - 0
+      - 1
+      - 10
+      - 15
+      - 30
+      - 60       
+  Key1:
+      Description: Give Key for Tag1, leave empty if you do not want tag
+      Type: String
+  Value1:
+    Description: Give Value for Tag1, leave empty if you do not want tag
+    Type: String
+  Key2:
+    Description: Give Key for Tag2, leave empty if you do not want tag
+    Type: String
+  Value2:
+    Description: Give Value for Tag2, leave empty if you do not want tag
+    Type: String
+  Key3:
+    Description: Give Key for Tag3, leave empty if you do not want tag
+    Type: String
+  Value3:
+    Description: Give Value for Tag3, leave empty if you do not want tag
+    Type: String
+  Key4:
+    Description: Give Key for Tag4, leave empty if you do not want tag
+    Type: String
+  Value4:
+    Description: Give Value for Tag4, leave empty if you do not want tag
+    Type: String
+  Key5:
+    Description: Give Key for Tag5, leave empty if you do not want tag
+    Type: String
+  Value5:
+    Description: Give Value for Tag5, leave empty if you do not want tag
+    Type: String      
+  KMSArn:
+    Description: 'Enter KMS ARN to encrypt object with CMK KMS else leave it blank to use default AWS Managed encryption.'
+    Type: String 
+  Customport:
+    Description:  TCP/IP port for the database. We strongly recommend using a custom port instead of the default port "example 5432 for postgress". If u want default port, leave it blank.
+    Type: String                
+  DBAllocatedStorage:
+    Description: Specify Storage space for your database 
+    Type: Number
+    Default: 100
+  ProvisionedIOPS:
+    Description: Enter the IOPS that depends upon the volume size (Please refer the RDS documentation) and enter this field only when you select volume type as io1 else place 0.
+    Type: Number
+    Default: 1000
+  DBMultiAZ:
+    Description: 'Specifies if the database instance is deployed to multiple Availability Zones for HA.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+
+Mappings:
+  Envmap:
+    development:
+      type: dev
+    staging:
+      type: stage
+    production:
+      type: prod
+  MySQLDBEngine:
+    us-east-1: #N.viginia
+      EngineVersion: "8.0.36"
+    us-west-2: #oregon
+      EngineVersion: "8.0.36"   
+    us-east-2: #ohio
+      EngineVersion: "8.0.36"      
+  MySQLDBFamily:
+    us-east-1: #N.viginia
+      Family: mysql8.0
+    us-east-2: #ohio
+      Family: mysql8.0
+    us-west-2: #oregon
+      Family: mysql8.0           
+  MariaDBFamily:
+    us-east-1: #N.viginia
+      Family: mariadb10.11
+    us-east-2: #ohio
+      Family: mariadb10.11 
+    us-west-2: #oregon
+      Family: mariadb10.11        
+  MariaDBEngine:
+    us-east-1: #N.viginia
+      EngineVersion: "10.11.6"
+    us-east-2: #ohio
+      EngineVersion: "10.11.6"  
+    us-west-2: #oregon
+      EngineVersion: "10.11.6"   
+  OracleDBEngine:
+    us-east-1: #N.viginia
+      EngineVersion: "19.0.0.0.ru-2024-04.rur-2024-04.r1"
+    us-west-2: #oregon
+      EngineVersion: "19.0.0.0.ru-2024-04.rur-2024-04.r1"   
+    us-east-2: #ohio
+      EngineVersion: "19.0.0.0.ru-2024-04.rur-2024-04.r1"  
+  OracleDBFamily:
+    us-east-1: #N.viginia
+      Family: oracle-se2-19
+    us-east-2: #ohio
+      Family: oracle-se2-19 
+    us-west-2: #oregon
+      Family: oracle-se2-19       
+  SQLDBEngine:
+    us-east-1: #N.viginia
+      EngineVersion: "15.00.4375.4.v1"
+    us-west-2: #oregon
+      EngineVersion: "15.00.4375.4.v1"   
+    us-east-2: #ohio
+      EngineVersion: "15.00.4375.4.v1"       
+  SQLDBFamily:
+    us-east-1: #N.viginia
+      Family: sqlserver-se-15.0
+    us-east-2: #ohio
+      Family: sqlserver-se-15.0
+    us-west-2: #oregon
+      Family: sqlserver-se-15.0        
+  PostgreSQLDBEngine:
+    us-east-1: #N.viginia
+      EngineVersion: "16.3"
+    us-west-2: #oregon
+      EngineVersion: "16.3"   
+    us-east-2: #ohio
+      EngineVersion: "16.3" 
+  PostgreSQLDBFamily:
+    us-east-1: #N.viginia
+      Family: postgres16
+    us-east-2: #ohio
+      Family: postgres16
+    us-west-2: #oregon
+      Family: postgres16 
+#########Mappings for v2 &v1 aurora            
+  AuroraMYSQLDBFamily:
+    us-east-1:
+      Family: "aurora-mysql8.0"
+    us-east-2:
+      Family: "aurora-mysql8.0"
+    us-west-1:
+      Family: "aurora-mysql8.0"
+    us-west-2:
+      Family: "aurora-mysql8.0"
+    eu-west-1:
+      Family: "aurora-mysql8.0"
+    eu-west-2:
+      Family: "aurora-mysql8.0"
+    eu-west-3:
+      Family: "aurora-mysql8.0"
+    eu-north-1:
+      Family: "aurora-mysql8.0"
+    me-south-1:
+      Family: "aurora-mysql8.0"
+    sa-east-1:
+      Family: "aurora-mysql8.0"
+    ap-east-1:
+      Family: "aurora-mysql8.0"
+    ap-south-1:
+      Family: "aurora-mysql8.0"   
+    eu-central-1:
+      Family: "aurora-mysql8.0"
+    ca-central-1:
+      Family: "aurora-mysql8.0"
+    ap-northeast-1:
+      Family: "aurora-mysql8.0"
+    ap-northeast-2:
+      Family: "aurora-mysql8.0"
+    ap-southeast-1:
+      Family: "aurora-mysql8.0"
+    ap-southeast-2:
+      Family: "aurora-mysql8.0"         
+  AuroraMYSQLDBEngine:
+    us-east-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    us-east-2:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    us-west-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    us-west-2:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    eu-west-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    eu-west-2:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    eu-west-3:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    eu-north-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    me-south-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    sa-east-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    ap-east-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    ap-south-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"   
+    eu-central-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    ca-central-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    ap-northeast-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    ap-northeast-2:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    ap-southeast-1:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+    ap-southeast-2:
+      EngineVersion: "8.0.mysql_aurora.3.06.1"
+
+  AuroraPSQLDBFamily:
+    us-east-1:
+      Family: "aurora-postgresql16"
+    us-east-2:
+      Family: "aurora-postgresql16"
+    us-west-1:
+      Family: "aurora-postgresql16"
+    us-west-2:
+      Family: "aurora-postgresql16"
+    eu-west-1:
+      Family: "aurora-postgresql16"
+    eu-west-2:
+      Family: "aurora-postgresql16"
+    eu-west-3:
+      Family: "aurora-postgresql16"
+    eu-north-1:
+      Family: "aurora-postgresql16"
+    me-south-1:
+      Family: "aurora-postgresql16"
+    sa-east-1:
+      Family: "aurora-postgresql16"
+    ap-east-1:
+      Family: "aurora-postgresql16"
+    ap-south-1:
+      Family: "aurora-postgresql16"   
+    eu-central-1:
+      Family: "aurora-postgresql16"
+    ca-central-1:
+      Family: "aurora-postgresql16"
+    ap-northeast-1:
+      Family: "aurora-postgresql16"
+    ap-northeast-2:
+      Family: "aurora-postgresql16"
+    ap-southeast-1:
+      Family: "aurora-postgresql16"
+    ap-southeast-2:
+      Family: "aurora-postgresql16"         
+  AuroraPSQLDBEngine:
+    us-east-1:
+      EngineVersion: "16.2"
+    us-east-2:
+      EngineVersion: "16.2"
+    us-west-1:
+      EngineVersion: "16.2"
+    us-west-2:
+      EngineVersion: "16.2"
+    eu-west-1:
+      EngineVersion: "16.2"
+    eu-west-2:
+      EngineVersion: "16.2"
+    eu-west-3:
+      EngineVersion: "16.2"
+    eu-north-1:
+      EngineVersion: "16.2"
+    me-south-1:
+      EngineVersion: "16.2"
+    sa-east-1:
+      EngineVersion: "16.2"
+    ap-east-1:
+      EngineVersion: "16.2"
+    ap-south-1:
+      EngineVersion: "16.2"   
+    eu-central-1:
+      EngineVersion: "16.2"
+    ca-central-1:
+      EngineVersion: "16.2"
+    ap-northeast-1:
+      EngineVersion: "16.2"
+    ap-northeast-2:
+      EngineVersion: "16.2"
+    ap-southeast-1:
+      EngineVersion: "16.2"
+    ap-southeast-2:
+      EngineVersion: "16.2 "
+
+  AuroraServerlessMYSQLDBFamily:
+    us-east-1:
+      Family: "aurora-mysql8.0"
+    us-east-2:
+      Family: "aurora-mysql8.0"
+    us-west-1:
+      Family: "aurora-mysql8.0"
+    us-west-2:
+      Family: "aurora-mysql8.0"
+    eu-west-1:
+      Family: "aurora-mysql8.0"
+    eu-west-2:
+      Family: "aurora-mysql8.0"
+    eu-west-3:
+      Family: "aurora-mysql8.0"
+    eu-north-1:
+      Family: "aurora-mysql8.0"
+    me-south-1:
+      Family: "aurora-mysql8.0"
+    sa-east-1:
+      Family: "aurora-mysql8.0"
+    ap-east-1:
+      Family: "aurora-mysql8.0"
+    ap-south-1:
+      Family: "aurora-mysql8.0"   
+    eu-central-1:
+      Family: "aurora-mysql8.0"
+    ca-central-1:
+      Family: "aurora-mysql8.0"
+    ap-northeast-1:
+      Family: "aurora-mysql8.0"
+    ap-northeast-2:
+      Family: "aurora-mysql8.0"
+    ap-southeast-1:
+      Family: "aurora-mysql8.0"
+    ap-southeast-2:
+      Family: "aurora-mysql8.0"         
+  AuroraServerlessMYSQLDBEngine:
+    us-east-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    us-east-2:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    us-west-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    us-west-2:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    eu-west-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    eu-west-2:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    eu-west-3:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    eu-north-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    me-south-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    sa-east-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    ap-east-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    ap-south-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"   
+    eu-central-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    ca-central-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    ap-northeast-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    ap-northeast-2:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    ap-southeast-1:
+      EngineVersion: "8.0.mysql_aurora.3.03.0"
+    ap-southeast-2:
+      EngineVersion: "8.0.mysql_aurora.3.03.0 "
+
+  AuroraServerlessPSQLDBFamily:
+    us-east-1:
+      Family: "aurora-postgresql16"
+    us-east-2:
+      Family: "aurora-postgresql16"
+    us-west-1:
+      Family: "aurora-postgresql16"
+    us-west-2:
+      Family: "aurora-postgresql16"
+    eu-west-1:
+      Family: "aurora-postgresql16"
+    eu-west-2:
+      Family: "aurora-postgresql16"
+    eu-west-3:
+      Family: "aurora-postgresql16"
+    eu-north-1:
+      Family: "aurora-postgresql16"
+    me-south-1:
+      Family: "aurora-postgresql16"
+    sa-east-1:
+      Family: "aurora-postgresql16"
+    ap-east-1:
+      Family: "aurora-postgresql16"
+    ap-south-1:
+      Family: "aurora-postgresql16"   
+    eu-central-1:
+      Family: "aurora-postgresql16"
+    ca-central-1:
+      Family: "aurora-postgresql16"
+    ap-northeast-1:
+      Family: "aurora-postgresql16"
+    ap-northeast-2:
+      Family: "aurora-postgresql16"
+    ap-southeast-1:
+      Family: "aurora-postgresql16"
+    ap-southeast-2:
+      Family: "aurora-postgresql16"         
+  AuroraServerlessPSQLDBEngine:
+    us-east-1:
+      EngineVersion: "16.2"
+    us-east-2:
+      EngineVersion: "16.2"
+    us-west-1:
+      EngineVersion: "16.2"
+    us-west-2:
+      EngineVersion: "16.2"
+    eu-west-1:
+      EngineVersion: "16.2"
+    eu-west-2:
+      EngineVersion: "16.2"
+    eu-west-3:
+      EngineVersion: "16.2"
+    eu-north-1:
+      EngineVersion: "16.2"
+    me-south-1:
+      EngineVersion: "16.2"
+    sa-east-1:
+      EngineVersion: "16.2"
+    ap-east-1:
+      EngineVersion: "16.2"
+    ap-south-1:
+      EngineVersion: "16.2"   
+    eu-central-1:
+      EngineVersion: "16.2"
+    ca-central-1:
+      EngineVersion: "16.2"
+    ap-northeast-1:
+      EngineVersion: "16.2"
+    ap-northeast-2:
+      EngineVersion: "16.2"
+    ap-southeast-1:
+      EngineVersion: "16.2"
+    ap-southeast-2:
+      EngineVersion: "16.2"
+
+
+Conditions:
+  MySQLreplica: !Equals [ !Ref Readreplica, "true" ]
+  Mariareplica: !Equals [ !Ref Readreplica, "true" ]
+  PostgreSQLreplica: !Equals [ !Ref Readreplica, "true" ]
+  MySQLDatabase: !Equals [ !Ref DatabaseType, MySQL ]
+  MariaDBDatabase: !Equals [ !Ref DatabaseType, MariaDB ]
+  OracleDBDatabase: !Equals [ !Ref DatabaseType, OracleDB ]
+  SQLServerDatabase: !Equals [ !Ref DatabaseType, SQLServer ]
+  PostgreSQLDatabase: !Equals [ !Ref DatabaseType, PostgreSQL ]
+  ###aurora v2 and v1 conditions
+  AuroraMYSQLDatabase: !Equals [ !Ref DatabaseType, AuroraMYSQL ] 
+  AuroraPSQLDatabase: !Equals [ !Ref DatabaseType, AuroraPSQL ] 
+  AuroraServerlessMYSQLDatabase: !Equals [ !Ref DatabaseType, AuroraServerlessMYSQL ] 
+  AuroraServerlessPSQLDatabase: !Equals [ !Ref DatabaseType, AuroraServerlessPSQL ] 
+  NotServerless: !Or
+    - Condition: AuroraMYSQLDatabase
+    - Condition: AuroraPSQLDatabase
+  Serverless: !Or
+    - Condition: AuroraServerlessMYSQLDatabase
+    - Condition: AuroraServerlessPSQLDatabase
+  AuroraMYSQL: !Or
+    - Condition: AuroraMYSQLDatabase
+    - Condition: AuroraServerlessMYSQLDatabase 
+  AuroraPSQL: !Or
+    - Condition: AuroraPSQLDatabase
+    - Condition: AuroraServerlessPSQLDatabase          
+  Auroradatabase: !Or
+    - Condition: AuroraMYSQLDatabase
+    - Condition: AuroraPSQLDatabase
+    - Condition: AuroraServerlessMYSQLDatabase
+    - Condition: AuroraServerlessPSQLDatabase
+########    
+  Aurorareplica: !Equals [ !Ref Readreplica, "true" ]
+  tag1: !Equals [!Ref Key1, '']
+  tag2: !Equals [!Ref Key2, '']
+  tag3: !Equals [!Ref Key3, '']
+  tag4: !Equals [!Ref Key4, '']  
+  tag5: !Equals [!Ref Key5, '']  
+  MariaDBDatabaseandMariareplica:
+    Fn::And:
+    - Condition: MariaDBDatabase
+    - Condition: Mariareplica
+  MySQLDatabaseandMySQLreplica:
+    Fn::And:
+    - Condition: MySQLDatabase
+    - Condition: MySQLreplica
+  PostgreSQLDatabaseandPostgreSQLreplica:
+    Fn::And:
+    - Condition: PostgreSQLDatabase
+    - Condition: PostgreSQLreplica
+  AuroradatabaseandAurorareplica:
+    Fn::And:
+    - Condition: Auroradatabase
+    - Condition: Aurorareplica
+  volumei01: !Equals [ !Ref StorageType, 'io1']
+  KMSEncryption: !Not [ !Equals [!Ref KMSArn, '' ] ] 
+  Customport: !Not [ !Equals [!Ref Customport, '' ] ] 
+  EnableEnhancedMonitoring: !Not [ !Equals [ !Ref EnhancedMonitoringInterval, '0' ] ]
+
+Resources:
+
+#########MariaDB############
+  MariaDBInstance:
+#    DependsOn: MariaDBParameterGroup
+    Type: AWS::RDS::DBInstance
+    Condition: MariaDBDatabase
+#    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceClass: !Ref DBInstancetype
+      DBInstanceIdentifier: !Sub ${ApplicationName}-${EnvironmentName}-dbinstance
+      DBName: !Ref DatabaseName
+      PubliclyAccessible: 'false'
+      BackupRetentionPeriod: 1           
+      DBSubnetGroupName:
+        Ref: MariaDBSubnetGroup
+      DBParameterGroupName:
+        Ref: MariaDBParameterGroup 
+      Engine: "MariaDB"
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MultiAZ: !Ref DBMultiAZ
+      EngineVersion: 
+        Fn::FindInMap:
+        - MariaDBEngine
+        - Ref: AWS::Region
+        - 'EngineVersion'   
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword  
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      StorageType: !Ref StorageType
+      KmsKeyId: !If
+        - KMSEncryption
+        - !Ref KMSArn
+        - !Ref AWS::NoValue      
+      Iops: !If
+        - volumei01
+        - !Ref ProvisionedIOPS
+        - !Ref AWS::NoValue
+      EnablePerformanceInsights: !Ref EnablePerformanceInsights
+      MonitoringInterval: 
+        !If
+          - EnableEnhancedMonitoring
+          - !Ref EnhancedMonitoringInterval
+          - !Ref AWS::NoValue
+      MonitoringRoleArn: 
+        !If
+          - EnableEnhancedMonitoring
+          - !GetAtt EnhancedMonitoringRDSRole.Arn
+          - !Ref AWS::NoValue        
+      Port: !If
+        - Customport
+        - !Ref Customport
+        - "3306"              
+      VPCSecurityGroups:
+        - !Ref MariaDBSecurityGroup      
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "maria-rds"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5   
+
+  MariaDBReplica:
+    Type: AWS::RDS::DBInstance
+    Condition: MariaDBDatabaseandMariareplica
+    Properties:
+      SourceDBInstanceIdentifier: !Ref MariaDBInstance     
+      DBInstanceClass: !Ref DBInstancetype 
+      DBInstanceIdentifier: !Sub ${ApplicationName}-mariadb-redreplica
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "mariadb-rds-replica"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5 
+
+  MariaDBParameterGroup:
+#    DependsOn: MariaDBInstance
+    Condition: MariaDBDatabase
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: database parameter group
+      Family:
+        Fn::FindInMap: 
+        - MariaDBFamily
+        - Ref: AWS::Region
+        - 'Family'
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5
+
+  MariaDBSubnetGroup:
+#    DependsOn: MariaDBInstance
+    Condition: MariaDBDatabase
+    Type: AWS::RDS::DBSubnetGroup
+    #DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: Rds DB subent groups.
+      SubnetIds:
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet1" 
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet2"
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet3"      
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-maria-subnetgroup"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5  
+
+  MariaDBSecurityGroup:
+    Condition: MariaDBDatabase
+    Type: AWS::EC2::SecurityGroup
+   # DependsOn: MariaDBInstance
+    #DeletionPolicy: Retain
+    Properties:
+      GroupName: !Sub 
+      - ${CustomerName}-${Env}-${ApplicationName}_mariadbsecuritygroup
+      - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+      GroupDescription: Security group for RDS DB Instance.
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${CustomerName}-${ExportTag}-VPC1"        
+      SecurityGroupIngress:
+      - ToPort: !If
+          - Customport
+          - !Ref Customport
+          - "3306"
+        IpProtocol: tcp
+        FromPort: !If
+          - Customport
+          - !Ref Customport
+          - "3306"
+        CidrIp: 0.0.0.0/0
+      GroupDescription: maria db Security Group
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-maria-db-sg"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5  
+
+######MySQL########
+  MySQLDBInstance:
+    Condition: MySQLDatabase
+#    DependsOn: MySQLDBParameterGroup
+    Type: AWS::RDS::DBInstance
+#    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceClass: !Ref DBInstancetype
+      DBParameterGroupName:
+        Ref: MySQLDBParameterGroup      
+      DBInstanceIdentifier: !Sub ${ApplicationName}-${EnvironmentName}-dbinstance
+      DBName: !Ref DatabaseName
+      VPCSecurityGroups:
+        - !Ref MySQLDBSecurityGroup
+      PubliclyAccessible: 'false'
+      BackupRetentionPeriod: 1      
+      DBSubnetGroupName:
+        Ref: MySQLDBSubnetGroup
+      Engine: "MySQL"
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MultiAZ: !Ref DBMultiAZ
+      EngineVersion: 
+        Fn::FindInMap:
+        - MySQLDBEngine
+        - Ref: AWS::Region
+        - 'EngineVersion'   
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword  
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      KmsKeyId: !If
+        - KMSEncryption
+        - !Ref KMSArn
+        - !Ref AWS::NoValue      
+      StorageType: !Ref StorageType
+      Iops: !If
+        - volumei01
+        - !Ref ProvisionedIOPS
+        - !Ref AWS::NoValue
+      EnablePerformanceInsights: !Ref EnablePerformanceInsights
+      MonitoringInterval: 
+        !If
+          - EnableEnhancedMonitoring
+          - !Ref EnhancedMonitoringInterval
+          - !Ref AWS::NoValue
+      MonitoringRoleArn: 
+        !If
+          - EnableEnhancedMonitoring
+          - !GetAtt EnhancedMonitoringRDSRole.Arn
+          - !Ref AWS::NoValue       
+      Port: !If
+        - Customport
+        - !Ref Customport
+        - "3306"         
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "mysql-rds"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5  
+
+  MySQLDBReplica:
+    Type: AWS::RDS::DBInstance
+    Condition: MySQLDatabaseandMySQLreplica
+    Properties:
+      SourceDBInstanceIdentifier: !Ref MySQLDBInstance     
+      DBInstanceClass: !Ref DBInstancetype
+      DBInstanceIdentifier: !Sub ${ApplicationName}-mysqldb-redreplica
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "mysql-rds-replica"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5   
+
+  MySQLDBSubnetGroup:
+    Condition: MySQLDatabase
+    Type: AWS::RDS::DBSubnetGroup
+    #DependsOn: MySQLDBInstance
+    #DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: Rds DB subent groups.
+      SubnetIds:
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet1" 
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet2"
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet3"      
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-mysql-subnetgroup"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5   
+
+  MySQLDBParameterGroup:
+    Condition: MySQLDatabase
+    #DependsOn: MySQLDBInstance
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: database parameter group
+      Family:
+        Fn::FindInMap: 
+        - MySQLDBFamily
+        - Ref: AWS::Region
+        - 'Family'
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5  
+
+  MySQLDBSecurityGroup:
+    Condition: MySQLDatabase
+    Type: AWS::EC2::SecurityGroup
+    #DependsOn: MySQLDBInstance
+    #DeletionPolicy: Retain
+    Properties:
+      GroupName: !Sub 
+      - ${CustomerName}-${Env}-${ApplicationName}_mysqldbsecuritygroup
+      - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+      GroupDescription: Security group for RDS DB Instance.
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${CustomerName}-${ExportTag}-VPC1"        
+      SecurityGroupIngress:
+      - ToPort: !If
+          - Customport
+          - !Ref Customport
+          - "3306"
+        IpProtocol: tcp
+        FromPort: !If
+          - Customport
+          - !Ref Customport
+          - "3306"
+        CidrIp: 0.0.0.0/0
+      GroupDescription: mysql db Security Group
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-mysql-db-sg"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5                    
+              
+#################OracleDB####################
+  OracleDBInstance:
+    Condition: OracleDBDatabase
+    Type: AWS::RDS::DBInstance
+#    DependsOn: OracleDBSubnetGroup
+#    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceClass: !Ref DBInstancetype
+      DBInstanceIdentifier: !Sub ${ApplicationName}-${EnvironmentName}-dbinstance
+      DBName: !Ref DatabaseName
+      DBParameterGroupName:
+        Ref: OracleDBParameterGroup
+      DBSubnetGroupName:
+        Ref: OracleDBSubnetGroup
+      PubliclyAccessible: 'false'
+      BackupRetentionPeriod: 1             
+      LicenseModel: bring-your-own-license  
+      Engine: "oracle-se2"
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MultiAZ: !Ref DBMultiAZ
+      EngineVersion: 
+        Fn::FindInMap:
+        - OracleDBEngine
+        - Ref: AWS::Region
+        - 'EngineVersion'   
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword  
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      KmsKeyId: !If
+        - KMSEncryption
+        - !Ref KMSArn
+        - !Ref AWS::NoValue      
+      StorageType: !Ref StorageType      
+      Iops: !If
+        - volumei01
+        - !Ref ProvisionedIOPS
+        - !Ref AWS::NoValue
+      EnablePerformanceInsights: !Ref EnablePerformanceInsights
+      MonitoringInterval: 
+        !If
+          - EnableEnhancedMonitoring
+          - !Ref EnhancedMonitoringInterval
+          - !Ref AWS::NoValue
+      MonitoringRoleArn: 
+        !If
+          - EnableEnhancedMonitoring
+          - !GetAtt EnhancedMonitoringRDSRole.Arn
+          - !Ref AWS::NoValue      
+      Port: !If
+        - Customport
+        - !Ref Customport
+        - "1521"              
+      VPCSecurityGroups:
+        - !Ref OracleDBSecurityGroup       
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "Oracle-rds"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5  
+
+  OracleDBSubnetGroup:
+    Condition: OracleDBDatabase
+    Type: AWS::RDS::DBSubnetGroup
+#    DependsOn: OracleDBInstance
+    #DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: Rds DB subent groups.
+      SubnetIds:
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet1" 
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet2"
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet3"      
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-oracle-subnetgroup"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5     
+
+  OracleDBParameterGroup:
+    Condition: OracleDBDatabase
+#    DependsOn: OracleDBSubnetGroup
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: database parameter group
+      Family:
+        Fn::FindInMap: 
+        - OracleDBFamily
+        - Ref: AWS::Region
+        - 'Family'
+      Parameters:
+        trace_enabled: "TRUE"
+        audit_trail: "DB"        
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5    
+
+  OracleDBSecurityGroup:
+    Condition: OracleDBDatabase
+#    DependsOn: OracleDBSubnetGroup
+    Type: AWS::EC2::SecurityGroup
+    #DeletionPolicy: Retain
+    Properties:
+      GroupName: !Sub 
+      - ${CustomerName}-${Env}-${ApplicationName}_oracledbsecuritygroup
+      - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+      GroupDescription: Security group for RDS DB Instance.
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${CustomerName}-${ExportTag}-VPC1"        
+      SecurityGroupIngress:
+      - ToPort: !If
+          - Customport
+          - !Ref Customport
+          - "1521"
+        IpProtocol: tcp
+        FromPort: !If
+          - Customport
+          - !Ref Customport
+          - "1521" 
+        CidrIp: 0.0.0.0/0
+      GroupDescription: Oracle db Security Group
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-oracle-db-sg"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5     
+
+######SQLServer######
+  SQLDBInstance:
+    Condition: SQLServerDatabase 
+#    DependsOn: SQLDBSubnetGroup
+    Type: AWS::RDS::DBInstance
+#    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceClass: !Ref DBInstancetype
+      DBInstanceIdentifier: !Sub ${ApplicationName}-${EnvironmentName}-dbinstance
+      DBSubnetGroupName:
+        Ref: SQLDBSubnetGroup
+      DBParameterGroupName:
+        Ref: SQLDBParameterGroup        
+      PubliclyAccessible: 'false'
+      BackupRetentionPeriod: 1             
+      LicenseModel: license-included  
+      Engine: "sqlserver-se"
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MultiAZ: !Ref DBMultiAZ
+      EngineVersion: 
+        Fn::FindInMap:
+        - SQLDBEngine
+        - Ref: AWS::Region
+        - 'EngineVersion'   
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword  
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      KmsKeyId: !If
+        - KMSEncryption
+        - !Ref KMSArn
+        - !Ref AWS::NoValue      
+      StorageType: !Ref StorageType
+      Iops: !If
+        - volumei01
+        - !Ref ProvisionedIOPS
+        - !Ref AWS::NoValue
+      EnablePerformanceInsights: !Ref EnablePerformanceInsights 
+      MonitoringInterval: 
+        !If
+          - EnableEnhancedMonitoring
+          - !Ref EnhancedMonitoringInterval
+          - !Ref AWS::NoValue
+      MonitoringRoleArn: 
+        !If
+          - EnableEnhancedMonitoring
+          - !GetAtt EnhancedMonitoringRDSRole.Arn
+          - !Ref AWS::NoValue      
+      Port: !If
+        - Customport
+        - !Ref Customport
+        - "1433"                    
+      VPCSecurityGroups:
+        - !Ref SQLDBSecurityGroup       
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "sql-rds"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5     
+
+  SQLDBSubnetGroup:
+    Condition: SQLServerDatabase
+    #DependsOn: SQLDBInstance
+    Type: AWS::RDS::DBSubnetGroup
+    #DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: Rds DB subent groups.
+      SubnetIds:
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet1" 
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet2"
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet3"      
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-sql-subnetgroup"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5   
+
+  SQLDBParameterGroup:
+    Condition: SQLServerDatabase
+    #DependsOn: SQLDBInstance
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: database parameter group
+      Family:
+        Fn::FindInMap: 
+        - SQLDBFamily
+        - Ref: AWS::Region
+        - 'Family'
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5    
+
+  SQLDBSecurityGroup:
+    Condition: SQLServerDatabase
+    #DependsOn: SQLDBInstance
+    Type: AWS::EC2::SecurityGroup
+    #DeletionPolicy: Retain
+    Properties:
+      GroupName: !Sub 
+      - ${CustomerName}-${Env}-${ApplicationName}_sqldbsecuritygroup
+      - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+      GroupDescription: Security group for RDS DB Instance.
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${CustomerName}-${ExportTag}-VPC1"        
+      SecurityGroupIngress:
+      - ToPort: !If
+          - Customport
+          - !Ref Customport
+          - "1433"
+        IpProtocol: tcp
+        FromPort: !If
+          - Customport
+          - !Ref Customport
+          - "1433"
+        CidrIp: 0.0.0.0/0
+      GroupDescription: sql db Security Group
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-sql-db-sg"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5   
+
+###########PostgreSQL#############
+  PostgreSQLDBInstance:
+    Condition: PostgreSQLDatabase
+#    DependsOn: PostgresqlDBParameterGroup
+    Type: AWS::RDS::DBInstance
+#    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceClass: !Ref DBInstancetype
+      DBInstanceIdentifier: !Sub ${ApplicationName}-${EnvironmentName}-dbinstance
+      DBName: !Ref DatabaseName
+      DBParameterGroupName:
+        Ref: PostgresqlDBParameterGroup      
+      DBSubnetGroupName:
+        Ref: PostgreSQLDBSubnetGroup
+      Engine: "postgres"
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MultiAZ: !Ref DBMultiAZ
+      PubliclyAccessible: 'false'
+      BackupRetentionPeriod: 1           
+      EngineVersion: 
+        Fn::FindInMap:
+        - PostgreSQLDBEngine
+        - Ref: AWS::Region
+        - 'EngineVersion'   
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword  
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      KmsKeyId: !If
+        - KMSEncryption
+        - !Ref KMSArn
+        - !Ref AWS::NoValue      
+      StorageType: !Ref StorageType
+      Iops: !If
+        - volumei01
+        - !Ref ProvisionedIOPS
+        - !Ref AWS::NoValue
+      EnablePerformanceInsights: !Ref EnablePerformanceInsights 
+      MonitoringInterval: 
+        !If
+          - EnableEnhancedMonitoring
+          - !Ref EnhancedMonitoringInterval
+          - !Ref AWS::NoValue
+      MonitoringRoleArn: 
+        !If
+          - EnableEnhancedMonitoring
+          - !GetAtt EnhancedMonitoringRDSRole.Arn
+          - !Ref AWS::NoValue      
+      Port: !If
+        - Customport
+        - !Ref Customport
+        - "5432"             
+      VPCSecurityGroups:
+        - !Ref PostgreSQLDBSecurityGroup       
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "sql-rds"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5   
+
+  PostgreSQLDBReplica:
+    Type: AWS::RDS::DBInstance
+    Condition: PostgreSQLDatabaseandPostgreSQLreplica
+    Properties:
+      SourceDBInstanceIdentifier: !Ref PostgreSQLDBInstance     
+      DBInstanceClass: !Ref DBInstancetype
+      DBInstanceIdentifier: !Sub ${ApplicationName}-postgresqldb-redreplica
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "Postgresql-rds-replica"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5  
+
+  PostgresqlDBParameterGroup:
+    Condition: PostgreSQLDatabase
+    Type: AWS::RDS::DBParameterGroup
+#    DependsOn: PostgreSQLDBSubnetGroup
+    Properties:
+      Description: database parameter group
+      Family:
+        Fn::FindInMap: 
+        - PostgreSQLDBFamily
+        - Ref: AWS::Region
+        - 'Family'
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5    
+
+  PostgreSQLDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Condition: PostgreSQLDatabase
+    #DependsOn: PostgreSQLDBInstance
+    #DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: Rds DB subent groups.
+      SubnetIds:
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet1" 
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet2"
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet3"      
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-postgresql-subnetgroup"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5   
+
+  PostgreSQLDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: PostgreSQLDatabase
+    #DeletionPolicy: Retain
+    Properties:
+      GroupName: !Sub 
+      - ${CustomerName}-${Env}-${ApplicationName}_postgresqldbsecuritygroup
+      - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+      GroupDescription: Security group for RDS DB Instance.
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${CustomerName}-${ExportTag}-VPC1"        
+      SecurityGroupIngress:
+      - ToPort: !If
+          - Customport
+          - !Ref Customport
+          - "5432"
+        IpProtocol: tcp
+        FromPort: !If
+          - Customport
+          - !Ref Customport
+          - "5432"
+        CidrIp: 0.0.0.0/0
+      GroupDescription: Postgresql db Security Group
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-postgresql-db-sg"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5     
+
+####Aurora###
+  AuroraDBSubnetGroup:
+    Condition: Auroradatabase
+    Type: AWS::RDS::DBSubnetGroup
+    #DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: Rds DB subent groups.
+      SubnetIds:
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet1" 
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet2"
+      - Fn::ImportValue: 
+          !Sub "${CustomerName}-${ExportTag}-DbSubnet3"      
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-aurora-subnetgroup"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5 
+
+  AuroraDBSecurityGroup:
+    Condition: Auroradatabase
+    Type: AWS::EC2::SecurityGroup
+    #DeletionPolicy: Retain
+    Properties:
+      GroupName: !Sub 
+      - ${CustomerName}-${Env}-${ApplicationName}_auroradbsecuritygroup
+      - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+      GroupDescription: Security group for RDS DB Instance.
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${CustomerName}-${ExportTag}-VPC1"        
+      SecurityGroupIngress:
+      - ToPort: !If
+          - Customport
+          - !Ref Customport
+          - "3306"
+        IpProtocol: tcp
+        FromPort: !If
+          - Customport
+          - !Ref Customport
+          - "3306"
+        CidrIp: 0.0.0.0/0
+      GroupDescription: Aurora db Security Group
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub
+          - "${ApplicationName}-${Env}-aurora-db-sg"
+          - { Env: !FindInMap [Envmap, !Ref EnvironmentName, type] }
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5     
+
+  AuroraDBCluster:
+    Condition: Auroradatabase
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    Properties:
+      Engine: #added logic for v2
+        !If
+          - AuroraMYSQL
+          - "aurora-mysql"
+          - 
+            !If
+              - AuroraPSQL
+              - "aurora-postgresql"
+              - 'exit'
+      EngineVersion: #added logic for v2
+        !If
+          - AuroraMYSQLDatabase
+          - 
+            Fn::FindInMap:
+            - AuroraMYSQLDBEngine
+            - Ref: AWS::Region
+            - 'EngineVersion'
+          - 
+            !If
+              - AuroraPSQLDatabase
+              - 
+                Fn::FindInMap:
+                - AuroraPSQLDBEngine
+                - Ref: AWS::Region
+                - 'EngineVersion'
+              - 
+                !If
+                  - AuroraServerlessMYSQLDatabase
+                  - 
+                    Fn::FindInMap:
+                    - AuroraServerlessMYSQLDBEngine
+                    - Ref: AWS::Region
+                    - 'EngineVersion'
+                  - 
+                    !If
+                      - AuroraServerlessPSQLDatabase
+                      - 
+                        Fn::FindInMap:
+                        - AuroraServerlessPSQLDBEngine
+                        - Ref: AWS::Region
+                        - 'EngineVersion'
+                      - 'exit'           
+      BackupRetentionPeriod: 1
+      StorageEncrypted: true
+      KmsKeyId: !If
+        - KMSEncryption
+        - !Ref KMSArn
+        - !Ref AWS::NoValue      
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword
+      Port: !If
+        - Customport
+        - !Ref Customport
+        - "3306"        
+      DBSubnetGroupName:
+        Ref: AuroraDBSubnetGroup
+      DatabaseName: !Ref DatabaseName  
+      VpcSecurityGroupIds:
+      - Ref: AuroraDBSecurityGroup
+      DBClusterParameterGroupName:
+        Ref: AuroraDBClusterParameterGroup
+      EnableCloudwatchLogsExports:
+        !If
+          - AuroraPSQL
+          - 
+            - postgresql
+          -
+            - error
+            - general
+      ServerlessV2ScalingConfiguration: #added parameter for v2
+        !If
+          - Serverless
+          - 
+            MaxCapacity: !Ref MaxAuroraCapacityUnit
+            MinCapacity: !Ref MinAuroraCapacityUnit
+          - !Ref AWS::NoValue
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5   
+
+  AuroraRDSinstance:
+    Condition: Auroradatabase
+    Type: AWS::RDS::DBInstance
+    #DeletionPolicy: Snapshot
+    Properties:
+      DBClusterIdentifier:
+        Ref: AuroraDBCluster
+      DBInstanceIdentifier: !Sub ${ApplicationName}-${EnvironmentName}-eb-dbinstance
+      StorageEncrypted: true      
+      DBInstanceClass: 
+        !If
+          - Serverless
+          - db.serverless
+          - 
+            !If
+              - NotServerless
+              - !Ref DBInstancetype
+              - 'exit'
+      Engine: #added logic for v2
+        !If
+          - AuroraMYSQL
+          - "aurora-mysql"
+          - 
+            !If
+              - AuroraPSQL
+              - "aurora-postgresql"
+              - 'exit'
+      EngineVersion: #added logic for v2
+        !If
+          - AuroraMYSQLDatabase
+          - 
+            Fn::FindInMap:
+            - AuroraMYSQLDBEngine
+            - Ref: AWS::Region
+            - 'EngineVersion'
+          - 
+            !If
+              - AuroraPSQLDatabase
+              - 
+                Fn::FindInMap:
+                - AuroraPSQLDBEngine
+                - Ref: AWS::Region
+                - 'EngineVersion'
+              - 
+                !If
+                  - AuroraServerlessMYSQLDatabase
+                  - 
+                    Fn::FindInMap:
+                    - AuroraServerlessMYSQLDBEngine
+                    - Ref: AWS::Region
+                    - 'EngineVersion'
+                  - 
+                    !If
+                      - AuroraServerlessPSQLDatabase
+                      - 
+                        Fn::FindInMap:
+                        - AuroraServerlessPSQLDBEngine
+                        - Ref: AWS::Region
+                        - 'EngineVersion'
+                      - 'exit' 
+      DBParameterGroupName:
+        Ref: AuroraDbParameterGroup
+      EnablePerformanceInsights: !Ref EnablePerformanceInsights  
+      MonitoringInterval: 
+        !If
+          - EnableEnhancedMonitoring
+          - !Ref EnhancedMonitoringInterval
+          - !Ref AWS::NoValue
+      MonitoringRoleArn: 
+        !If
+          - EnableEnhancedMonitoring
+          - !GetAtt EnhancedMonitoringRDSRole.Arn
+          - !Ref AWS::NoValue            
+      DBSubnetGroupName:
+        Ref: AuroraDBSubnetGroup
+      PubliclyAccessible: 'false'
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "aurora-rds"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5  
+
+  AuroraRDSReplica:
+    Type: AWS::RDS::DBInstance
+    Condition: AuroradatabaseandAurorareplica
+    #DeletionPolicy: Snapshot
+    Properties:
+      DBClusterIdentifier:
+        Ref: AuroraDBCluster
+      DBInstanceClass:
+        !If
+          - Serverless
+          - db.serverless
+          - 
+            !If
+              - NotServerless
+              - !Ref DBInstancetype
+              - 'exit'     
+      #DBName: !Ref DatabaseName
+      Engine: #added logic for v2
+        !If
+          - AuroraMYSQL
+          - "aurora-mysql"
+          - 
+            !If
+              - AuroraPSQL
+              - "aurora-postgresql"
+              - 'exit'
+      DBParameterGroupName:
+        Ref: AuroraDbParameterGroup
+      DBSubnetGroupName:
+        Ref: AuroraDBSubnetGroup
+      Tags:
+        - 
+          Key: Name
+          Value: !Sub "aurora-rds-replica"
+        - 
+          Key: Environment
+          Value: !Ref "EnvironmentName"
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5     
+
+  AuroraDBClusterParameterGroup:
+    Condition: Auroradatabase
+    Type: AWS::RDS::DBClusterParameterGroup
+    #DeletionPolicy: Retain
+    Properties:
+      Description: CloudFormation Sample Aurora Cluster Parameter Group
+      Family: #added logic for v2
+        !If
+          - AuroraMYSQLDatabase
+          - 
+            Fn::FindInMap:
+            - AuroraMYSQLDBFamily
+            - Ref: AWS::Region
+            - 'Family'
+          - 
+            !If
+              - AuroraPSQLDatabase
+              - 
+                Fn::FindInMap:
+                - AuroraPSQLDBFamily
+                - Ref: AWS::Region
+                - 'Family'
+              - 
+                !If
+                  - AuroraServerlessMYSQLDatabase
+                  - 
+                    Fn::FindInMap:
+                    - AuroraServerlessMYSQLDBFamily
+                    - Ref: AWS::Region
+                    - 'Family'
+                  - 
+                    !If
+                      - AuroraServerlessPSQLDatabase
+                      - 
+                        Fn::FindInMap:
+                        - AuroraServerlessPSQLDBFamily
+                        - Ref: AWS::Region
+                        - 'Family'
+                      - 'exit'
+      Parameters:
+        !If
+          - AuroraMYSQL
+          -   
+            character_set_database: "utf32"
+    #        general_log: "0"
+    #        log_output: "FILE"
+          - 
+            log_connections: 1
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5 
+
+  AuroraDbParameterGroup:
+    Condition: Auroradatabase
+    Type: AWS::RDS::DBParameterGroup
+    #DeletionPolicy: Retain
+    Properties:
+      Description: DbParameters
+      Family: #added logic for v2
+        !If
+          - AuroraMYSQLDatabase
+          - 
+            Fn::FindInMap:
+            - AuroraMYSQLDBFamily
+            - Ref: AWS::Region
+            - 'Family'
+          - 
+            !If
+              - AuroraPSQLDatabase
+              - 
+                Fn::FindInMap:
+                - AuroraPSQLDBFamily
+                - Ref: AWS::Region
+                - 'Family'
+              - 
+                !If
+                  - AuroraServerlessMYSQLDatabase
+                  - 
+                    Fn::FindInMap:
+                    - AuroraServerlessMYSQLDBFamily
+                    - Ref: AWS::Region
+                    - 'Family'
+                  - 
+                    !If
+                      - AuroraServerlessPSQLDatabase
+                      - 
+                        Fn::FindInMap:
+                        - AuroraServerlessPSQLDBFamily
+                        - Ref: AWS::Region
+                        - 'Family'
+                      - 'exit'
+      Parameters:
+        !If
+          - AuroraMYSQL
+          -       
+            log_bin_trust_function_creators: 'on'
+          - 
+            log_connections: 1
+      Tags:
+      - Key: Environment
+        Value: !Ref "EnvironmentName"
+      - 
+        !If 
+        - tag1
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key1
+          Value: !Ref Value1        
+      -
+        !If 
+        - tag2
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key2
+          Value: !Ref Value2   
+      - 
+        !If 
+        - tag3
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key3
+          Value: !Ref Value3
+      -
+        !If 
+        - tag4
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key4
+          Value: !Ref Value4
+      -  
+        !If 
+        - tag5
+        - !Ref AWS::NoValue
+        - 
+          Key: !Ref Key5
+          Value: !Ref Value5        
+
+#RDS Enhanced Monitoring Role
+  EnhancedMonitoringRDSRole:
+    Condition: EnableEnhancedMonitoring
+    Type: AWS::IAM::Role
+    Metadata:
+      Comment: Role to be used by dbinstance when enhanced monitoring is enabled.
+    Properties:
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - monitoring.rds.amazonaws.com
+        Version: '2012-10-17'
+      Path: /  
+      Tags:      
+        - 
+          !If 
+          - tag1
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key1
+            Value: !Ref Value1        
+        -
+          !If 
+          - tag2
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key2
+            Value: !Ref Value2   
+        - 
+          !If 
+          - tag3
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key3
+            Value: !Ref Value3
+        -
+          !If 
+          - tag4
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key4
+            Value: !Ref Value4
+        -  
+          !If 
+          - tag5
+          - !Ref AWS::NoValue
+          - 
+            Key: !Ref Key5
+            Value: !Ref Value5 
